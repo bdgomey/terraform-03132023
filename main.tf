@@ -1,90 +1,37 @@
-resource "aws_vpc" "main" {
-  cidr_block           = var.vpc_cidr
-  instance_tenancy     = var.instance_tenancy
-  enable_dns_hostnames = true
-  enable_dns_support   = true
-  tags = {
-    Name = "bjgomes-vpc"
-    env  = "Dev"
+module "network" {
+  source = "./modules/network"
+  subnet_bits = var.subnet_bits
+  public_subnet_count = var.public_subnet_count
+  private_subnet_count = var.private_subnet_count
+  availability_zones = var.availability_zones
+}
+
+resource "aws_db_subnet_group" "main" {
+  name = "demo-aurora-subnet-group"
+  subnet_ids = [for subnet in module.network.aws_private_subnet : subnet.id]
+}
+
+resource "aws_rds_cluster" "main" {
+  cluster_identifier = "bjgomes-demo"
+  engine             = "aurora-mysql"
+  engine_mode        = "provisioned"
+  engine_version     = "8.0"
+  database_name      = "wordpress"
+  master_username    = "admin"
+  master_password    = "password1234"
+  db_subnet_group_name = aws_db_subnet_group.main.name
+  vpc_security_group_ids = [module.network.aws_security_group_id]
+  skip_final_snapshot = true
+
+  serverlessv2_scaling_configuration {
+    max_capacity = 2.0
+    min_capacity = 0.5
   }
 }
 
-resource "aws_internet_gateway" "main" {
-  vpc_id = aws_vpc.main.id
-}
-
-resource "aws_nat_gateway" "main" {
-  allocation_id = aws_eip.main.id
-  subnet_id     = aws_subnet.public[0].id
-    tags = {
-    Name = "bjgomes-nat"
-    env  = "Dev"
-  }
-}
-
-resource "aws_eip" "main" {
-
-}
-
-resource "aws_subnet" "public" {
-  count                   = var.public_subnet_count
-  vpc_id                  = aws_vpc.main.id
-  cidr_block              = cidrsubnet(var.vpc_cidr, var.subnet_bits, count.index)
-  availability_zone       = element(var.availability_zones, count.index)
-  map_public_ip_on_launch = true
-  tags = {
-    Name = "bjgomes-publicsubnet"
-    env  = "Dev"
-  }
-}
-
-resource "aws_subnet" "private" {
-  count             = var.private_subnet_count
-  vpc_id            = aws_vpc.main.id
-  cidr_block        = cidrsubnet(var.vpc_cidr, var.subnet_bits, count.index + var.public_subnet_count)
-  availability_zone = element(var.availability_zones, count.index)
-  tags = {
-    Name = "bjgomes-privatesubnet"
-    env  = "Dev"
-  }
-}
-
-resource "aws_route_table" "public" {
-  vpc_id = aws_vpc.main.id
-  tags = {
-    Name = "bjgomes-publicroutetable"
-    env  = "Dev"
-  }
-}
-
-resource "aws_route" "public" {
-  route_table_id         = aws_route_table.public.id
-  destination_cidr_block = "0.0.0.0/0"
-  gateway_id             = aws_internet_gateway.main.id
-}
-
-resource "aws_route_table_association" "public" {
-  count          = var.public_subnet_count
-  route_table_id = aws_route_table.public.id
-  subnet_id      = aws_subnet.public[count.index].id
-}
-
-resource "aws_route_table" "private" {
-  vpc_id = aws_vpc.main.id
-  tags = {
-    Name = "bjgomes-privateroutetable"
-    env  = "Dev"
-  }
-}
-
-resource "aws_route" "private" {
-  route_table_id         = aws_route_table.private.id
-  destination_cidr_block = "0.0.0.0/0"
-  nat_gateway_id         = aws_nat_gateway.main.id
-}
-
-resource "aws_route_table_association" "private" {
-  count          = var.private_subnet_count
-  route_table_id = aws_route_table.private.id
-  subnet_id      = aws_subnet.private[count.index].id
+resource "aws_rds_cluster_instance" "main" {
+  cluster_identifier = aws_rds_cluster.main.id
+  instance_class     = "db.serverless"
+  engine             = aws_rds_cluster.main.engine
+  engine_version     = aws_rds_cluster.main.engine_version
 }
