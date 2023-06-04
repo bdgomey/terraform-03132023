@@ -10,29 +10,28 @@ resource "aws_vpc" "main" {
 }
 
 resource "aws_vpc_endpoint" "ssm" {
-  vpc_id       = aws_vpc.main.id
-  service_name = "com.amazonaws.us-east-1.ssm"
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.us-east-1.ssm"
   vpc_endpoint_type = "Interface"
 }
 
 resource "aws_vpc_endpoint" "ssmmessages" {
-  vpc_id       = aws_vpc.main.id
-  service_name = "com.amazonaws.us-east-1.ssmmessages"
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.us-east-1.ssmmessages"
   vpc_endpoint_type = "Interface"
 }
 
 resource "aws_vpc_endpoint" "ec2" {
-  vpc_id       = aws_vpc.main.id
-  service_name = "com.amazonaws.us-east-1.ec2"
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.us-east-1.ec2"
   vpc_endpoint_type = "Interface"
 }
 
 resource "aws_vpc_endpoint" "ec2messages" {
-  vpc_id       = aws_vpc.main.id
-  service_name = "com.amazonaws.us-east-1.ec2messages"
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.us-east-1.ec2messages"
   vpc_endpoint_type = "Interface"
 }
-
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
 }
@@ -40,7 +39,7 @@ resource "aws_internet_gateway" "main" {
 resource "aws_nat_gateway" "main" {
   allocation_id = aws_eip.main.id
   subnet_id     = aws_subnet.public[0].id
-    tags = {
+  tags = {
     Name = "bjgomes-nat"
     env  = "Dev"
   }
@@ -50,11 +49,12 @@ resource "aws_eip" "main" {
 
 }
 
+
 resource "aws_subnet" "public" {
   count                   = var.public_subnet_count
   vpc_id                  = aws_vpc.main.id
   cidr_block              = cidrsubnet(var.vpc_cidr, var.subnet_bits, count.index)
-  availability_zone       = element(var.availability_zones, count.index)
+  availability_zone       = element(var.availability_zone, count.index)
   map_public_ip_on_launch = true
   tags = {
     Name = "bjgomes-publicsubnet"
@@ -66,7 +66,7 @@ resource "aws_subnet" "private" {
   count             = var.private_subnet_count
   vpc_id            = aws_vpc.main.id
   cidr_block        = cidrsubnet(var.vpc_cidr, var.subnet_bits, count.index + var.public_subnet_count)
-  availability_zone = element(var.availability_zones, count.index)
+  availability_zone = element(var.availability_zone, count.index)
   tags = {
     Name = "bjgomes-privatesubnet"
     env  = "Dev"
@@ -91,6 +91,7 @@ resource "aws_route_table_association" "public" {
   count          = var.public_subnet_count
   route_table_id = aws_route_table.public.id
   subnet_id      = aws_subnet.public[count.index].id
+
 }
 
 resource "aws_route_table" "private" {
@@ -114,36 +115,40 @@ resource "aws_route_table_association" "private" {
 }
 
 resource "aws_security_group" "main" {
-  name = "terraform-demo-sg"
-  description = " allows ssh, http and mysql"
-  vpc_id = aws_vpc.main.id
+  name        = "terraform-security-group"
+  description = "Allow SSH access from anywhere"
+  vpc_id      = aws_vpc.main.id
 
   ingress {
-    from_port = 22
-    to_port = 22
-    protocol = "tcp"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
   ingress {
-    from_port = 80
-    to_port = 80
-    protocol = "tcp"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
   ingress {
-    from_port = 3306
-    to_port = 3306
-    protocol = "tcp"
+    from_port   = 3306
+    to_port     = 3306
+    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-egress {
-    from_port = 0
-    to_port = 0
-    protocol = "-1"
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
-}
+  }
 
+  tags = {
+    Name = "terraform-security-group"
+    env  = "Dev"
+  }
 }

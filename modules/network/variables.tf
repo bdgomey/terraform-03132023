@@ -1,31 +1,34 @@
 variable "vpc_cidr" {
   type        = string
-  description = "this is my vpc cidr"
-  default = "10.0.0.0/16"
+  description = "VPC CIDR Block"
+  default     = "10.0.0.0/16"
 }
 
 variable "instance_tenancy" {
   type        = string
-  description = "default tenancy"
-  default = "default"
-}
-
-variable "subnet_bits" { # i.e. if the subnet_bits variable is 8 and my vpc cidr is 10.0.0.0/16, this will add 8 to the cidr making it a 10.0.0.0/24 for the subnet
-  type        = number
-  description = "subnet bits I want added to the vpc cidr block to create my subnet cidr block"
+  description = "Instance Tenancy"
+  default     = "default"
 }
 
 variable "public_subnet_count" {
   type        = number
-  description = "number of public subnets"
+  description = "Count of public subnets that I want created"
 }
 
 variable "private_subnet_count" {
   type        = number
-  description = "number of private subnets"
+  description = "Count of public subnets that I want created"
 }
 
-variable "availability_zones" {
+
+variable "subnet_bits" { # i.e. if the subnet_bits variable is 8 and my vpc cidr is 10.0.0.0/16, this will add 8 to the cidr making it a 10.0.0.0/24 for the subnet
+  type        = number
+  description = "subnet bits I want added to the vpc cidr block to create my subnet cidr block"
+  default     = 8
+}
+
+variable "availability_zone" {
   type        = list(string)
-  description = "AZs"
+  description = "the availability zone"
+  default     = ["us-east-1a", "us-east-1b"]
 }
